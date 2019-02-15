@@ -1,0 +1,7 @@
+{
+  "extends": "gts/tslint.json",
+  "rules": {
+      "variable-name": false
+  },
+  "indent": [true, "spaces", 4]
+}

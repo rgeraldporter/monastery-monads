@@ -1,0 +1,31 @@
+{
+    "name": "monastery-monads",
+    "version": "0.1.0",
+    "description": "Primative Monads for JS.",
+    "main": "build/src/index.js",
+    "types": "build/src/index.d.ts",
+    "files": [
+        "build/src"
+    ],
+    "author": "Robert Gerald Porter <rob@weeverapps.com>",
+    "license": "MIT",
+    "repository": {
+        "url": "git@github.com:rgeraldporter/monastery.git",
+        "type": "git"
+    },
+    "scripts": {
+        "test": "jest --env=node",
+        "check": "gts check",
+        "clean": "gts clean",
+        "compile": "tsc -p .",
+        "fix": "gts fix",
+        "prepare": "npm run compile",
+        "pretest": "npm run compile"
+    },
+    "devDependencies": {
+        "@types/jest": "24.0.0",
+        "gts": "^0.9.0",
+        "jest": "23.6.0",
+        "typescript": "~3.1.0"
+    }
+}
