@@ -3,6 +3,15 @@ export interface Monad<T> {
     chain: <U>(f: Function) => Monad<U>;
     join: () => T;
     inspect: () => string;
+    readonly is: symbol;
+}
+
+export interface NothingMonad {
+    map: (f: Function) => NothingMonad;
+    chain: (f: Function) => NothingMonad;
+    join: () => NothingMonad;
+    inspect: () => string;
+    readonly is: symbol;
 }
 
 export interface StringMonad extends Monad<string> {
@@ -21,7 +30,15 @@ export interface NumberMonad extends Monad<number> {
     divide: (by: number) => NumberMonad;
 }
 
-export interface ObjectMonad extends Monad<object> {}
+export interface ObjectMonad extends Monad<object> {
+    path: Function;
+    prop: Function;
+}
+
 export interface SymbolMonad extends Monad<symbol> {}
 export interface BooleanMonad extends Monad<boolean> {}
 export interface ArrayMonad<T> extends Monad<T[]> {}
+
+export interface NullMonad extends NothingMonad {}
+export interface UndefinedMonad extends NothingMonad {}
+export interface NaNMonad extends NothingMonad {}

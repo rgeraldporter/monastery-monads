@@ -1,4 +1,12 @@
-import { $Array, $Boolean, $Number, $Object, $String, $Symbol } from './index';
+import {
+    $Array,
+    $Boolean,
+    $Number,
+    $Object,
+    $String,
+    $Symbol,
+    $$TypeSymbols
+} from './index';
 import {
     ArrayMonad,
     BooleanMonad,
@@ -50,6 +58,12 @@ describe('$Array', () => {
 
         expect(associativity1.join()).toEqual(associativity2.join());
     });
+
+    it('should have an $Array symbol', () => {
+        const a = $Array.of([1]);
+
+        expect(a.is).toBe($$TypeSymbols.prop('$Array').join());
+    });
 });
 
 describe('$Number', () => {
@@ -85,6 +99,12 @@ describe('$Number', () => {
             .chain((x: number) => g(x).chain(f));
 
         expect(associativity1.join()).toEqual(associativity2.join());
+    });
+
+    it('should have an $Number symbol', () => {
+        const a = $Number.of(12);
+
+        expect(a.is).toBe($$TypeSymbols.prop('$Number').join());
     });
 
     it('should be able to do basic math', () => {
@@ -134,6 +154,12 @@ describe('$Boolean', () => {
             .chain((x: boolean) => g(x).chain(f));
 
         expect(associativity1.join()).toEqual(associativity2.join());
+    });
+
+    it('should have an $Boolean symbol', () => {
+        const a = $Boolean.of(false);
+
+        expect(a.is).toBe($$TypeSymbols.prop('$Boolean').join());
     });
 });
 
@@ -188,6 +214,48 @@ describe('$Object', () => {
         const associativity2 = $Object.of(a).chain((x: {}) => g(x).chain(f));
 
         expect(associativity1.join()).toEqual(associativity2.join());
+    });
+
+    it('should be able to retrieve a value from a path', () => {
+        const a = {
+            b: {
+                x: {
+                    y: true
+                },
+                s: {
+                    a: {
+                        b: 12
+                    }
+                }
+            },
+            c: [1, 2, 12],
+            d: false
+        };
+
+        const bx = $Object.of(a).path(['b', 'x']);
+        expect(bx.join()).toEqual({ y: true });
+
+        const c = $Object.of(a).path(['c']);
+        expect(c.join()).toEqual([1, 2, 12]);
+
+        const b = $Object.of(a).path(['b', 's', 'a', 'b']);
+        expect(b.join()).toEqual(12);
+    });
+
+    it('should return a nothing type monad when the path is not present', () => {
+        const a = {
+            b: {
+                x: {
+                    y: true,
+                    z: null
+                }
+            },
+            c: [1, 2, 12],
+            d: false
+        };
+
+        const bx = $Object.of(a).path(['b', 'x', 'z']);
+        expect(bx.inspect()).toEqual('Nothing');
     });
 });
 
