@@ -5,7 +5,8 @@ import {
     $Object,
     $String,
     $Symbol,
-    $$TypeSymbols
+    $$TypeSymbols,
+    $Type
 } from './index';
 import {
     ArrayMonad,
@@ -14,7 +15,14 @@ import {
     ObjectMonad,
     StringMonad,
     SymbolMonad,
-    Monad
+    Monad,
+    MonasteryTypeParameters,
+    MonasteryMonadTypeParameters,
+    $$ReflectionSymbol,
+    MonasteryTypeValue,
+    MonasteryTypeConstructorTuple,
+    TypeMonad,
+    TypeMethods
 } from './types';
 
 describe('$Array', () => {
@@ -355,4 +363,257 @@ describe('$Symbol', () => {
 
         expect(associativity1.join()).toEqual(associativity2.join());
     });
+});
+
+describe('$Type generated types', () => {
+    it('should satisfy the first monad law of left identity', () => {
+        interface FirstLaw extends Monad<object> {
+            addNum: Function;
+            concatStr: Function;
+        }
+
+        type FirstLawValues = {
+            num: NumberMonad;
+            str: StringMonad;
+        };
+
+        const $FirstLaw = $Type.of([
+            '$FirstLaw',
+            { num: $Number, str: $String },
+            x => ({
+                addNum: (a: number) =>
+                    $Number.assert(x.num) ? x.num.join() + a : a, // idea: .assert().fork()
+                concatStr: (s: string) =>
+                    $String.assert(x.str) ? x.str.join() + s : s
+            })
+        ]);
+
+        const s: FirstLawValues = {
+            num: $Number.of(10),
+            str: $String.of('test')
+        };
+
+        const f = (x: MonasteryMonadTypeParameters) =>
+            $FirstLaw.of({
+                num: $Number.of((x.num as NumberMonad).join() + 1),
+                str: $String.of(x.str.join() + '.')
+            });
+
+        // 1. unit(x).chain(f) ==== f(x)
+        const leftIdentity1 = $FirstLaw.of(s).chain(f);
+        const leftIdentity2 = f(s);
+
+        expect(
+            (leftIdentity1.join() as MonasteryMonadTypeParameters).num.join()
+            //@ts-ignore
+        ).toEqual(leftIdentity2.join().num.join());
+        // @ts-ignore
+        expect(leftIdentity1.join().str.join()).toEqual(
+            // @ts-ignore
+            leftIdentity2.join().str.join()
+        );
+
+        const t = { num: 10, str: 'test' };
+
+        const g = (x: MonasteryTypeParameters) =>
+            // @ts-ignore
+            $FirstLaw.of({ num: x.num + 1, str: x.str + '.' });
+
+        // 1. unit(x).chain(f) ==== f(x)
+        // @ts-ignore
+        const leftIdentity3 = $FirstLaw.of(t).chain(g);
+        // @ts-ignore
+        const leftIdentity4 = g(t);
+
+        // @ts-ignore
+        expect(leftIdentity3.join().num).toEqual(leftIdentity4.join().num);
+        // @ts-ignore
+        expect(leftIdentity3.join().str).toEqual(leftIdentity4.join().str);
+    });
+
+    it('should satisfy the second monad law of right identity', () => {
+        const $SecondLaw = $Type.of([
+            '$SecondLaw',
+            { num: $Number, str: $String, bool: $Boolean },
+            x => ({
+                addNum: (a: number) =>
+                    $Number.assert(x.num) ? x.num.join() + a : a, // idea: .assert().fork()
+                concatStr: (s: string) =>
+                    $String.assert(x.str) ? x.str.join() + s : s,
+                isTrue: () => ($Boolean.assert(x.bool) ? x.bool : false)
+            })
+        ]);
+
+        const s = {
+            num: $Number.of(52),
+            str: $String.of('test'),
+            bool: $Boolean.of(1 === 1)
+        };
+
+        // 2. m.chain(unit) ==== m
+        const rightIdentity1 = $SecondLaw.of(s).chain($SecondLaw.of);
+        const rightIdentity2 = $SecondLaw.of(s);
+
+        expect(rightIdentity1.join()).toEqual(rightIdentity2.join());
+    });
+
+    it('should satisfy the third monad law of associativity', () => {
+        const $ThirdLaw = $Type.of([
+            '$ThirdLaw',
+            { num: $Number, str: $String, bool: $Boolean, obj: $Object },
+            x => ({
+                addToNum: (a: number) =>
+                    $Number.assert(x.num)
+                        ? $ThirdLaw.of({ ...x, num: x.num.join() + a })
+                        : $ThirdLaw.of({ ...x, num: a }), // idea: .assert().fork()
+                concatStr: (s: string) =>
+                    $String.assert(x.str)
+                        ? $ThirdLaw.of({ ...x, str: x.str.join() + s })
+                        : $ThirdLaw.of({ ...x, str: s }),
+                isTrue: () => ($Boolean.assert(x.bool) ? x.bool : false)
+            })
+        ]);
+
+        const s = {
+            num: $Number.of(52),
+            str: $String.of('test'),
+            bool: $Boolean.of(1 === 1),
+            obj: $Object.of({ a: 1 })
+        };
+
+        const g = (x: {}) => $ThirdLaw.of({ ...x, num: 15 });
+        const f = (x: {}) => $ThirdLaw.of({ ...x, str: 'ijasas' });
+
+        // 3. m.chain(f).chain(g) ==== m.chain(x => f(x).chain(g))
+        const associativity1 = $ThirdLaw
+            .of(s)
+            .chain(g)
+            .chain(f);
+        const associativity2 = $ThirdLaw.of(s).chain((x: {}) => g(x).chain(f));
+
+        expect(associativity1.join()).toEqual(associativity2.join());
+    });
+
+    it('can have methods that extend TypeMonad, assert type, and return new monads', () => {
+        interface MyTypeMethods extends TypeMethods {
+            addToNum: Function;
+            concatStr: Function;
+            isTrue: Function;
+        }
+
+        interface MyType extends TypeMonad, MyTypeMethods {}
+
+        type MyTypeConstructor = {
+            of: (x: unknown) => MyType;
+        };
+
+        const $MyType: MyTypeConstructor = $Type.of([
+            '$MyType',
+            { num: $Number, str: $String, bool: $Boolean, obj: $Object },
+            (x): MyTypeMethods => ({
+                addToNum: (a: number) =>
+                    $Number.assert(x.num)
+                        ? $MyType.of({ ...x, num: x.num.join() + a })
+                        : $MyType.of({ ...x, num: a }), // idea: .assert().fork()
+                concatStr: (s: string) =>
+                    $String.assert(x.str)
+                        ? $MyType.of({ ...x, str: x.str.join() + s })
+                        : $MyType.of({ ...x, str: s }),
+                isTrue: () => ($Boolean.assert(x.bool) ? x.bool : false)
+            })
+        ]) as MyTypeConstructor;
+
+        const t: MyType = $MyType.of({
+            num: $Number.of(521),
+            str: $String.of('test'),
+            bool: $Boolean.of(1 === 1),
+            obj: $Object.of({ a: 1 })
+        }) as MyType;
+
+        expect(t.addToNum(11).join().num).toBe(532);
+    });
+
+    it('throws errors when the type being created does not match', () => {
+        interface MyTypeMethods extends TypeMethods {
+            addToNum: Function;
+            concatStr: Function;
+            isTrue: Function;
+        }
+
+        interface MyType extends TypeMonad, MyTypeMethods {}
+
+        type MyTypeConstructor = {
+            of: (x: unknown) => MyType;
+        };
+
+        const $MyType: MyTypeConstructor = $Type.of([
+            '$MyType',
+            { num: $Number, str: $String, bool: $Boolean, obj: $Object },
+            (x): MyTypeMethods => ({
+                addToNum: (a: number) =>
+                    $Number.assert(x.num)
+                        ? $MyType.of({ ...x, num: x.num.join() + a })
+                        : $MyType.of({ ...x, num: a }), // idea: .assert().fork()
+                concatStr: (s: string) =>
+                    $String.assert(x.str)
+                        ? $MyType.of({ ...x, str: x.str.join() + s })
+                        : $MyType.of({ ...x, str: s }),
+                isTrue: () => ($Boolean.assert(x.bool) ? x.bool : false)
+            })
+        ]) as MyTypeConstructor;
+
+        expect( $MyType.of ).toThrow('Constructor must be an object.');
+
+        const myT = (): MyType => $MyType.of({
+            num: $Number.of(521),
+            str: $String.of('test'),
+            bool: $Boolean.of(1 === 1),
+            obj: $Object.of({ a: 1 }),
+            thing: $String.of('this aint right')
+        }) as MyType;
+
+        expect( myT ).toThrow(TypeError);
+    });
+
+
+    it('throws errors when the wrong type goes into a type', () => {
+        interface MyTypeMethods extends TypeMethods {
+            addToNum: Function;
+            concatStr: Function;
+            isTrue: Function;
+        }
+
+        interface MyType extends TypeMonad, MyTypeMethods {}
+
+        type MyTypeConstructor = {
+            of: (x: unknown) => MyType;
+        };
+
+        const $MyType: MyTypeConstructor = $Type.of([
+            '$MyType',
+            { num: $Number, str: $String, bool: $Boolean, obj: $Object },
+            (x): MyTypeMethods => ({
+                addToNum: (a: number) =>
+                    $Number.assert(x.num)
+                        ? $MyType.of({ ...x, num: x.num.join() + a })
+                        : $MyType.of({ ...x, num: a }), // idea: .assert().fork()
+                concatStr: (s: string) =>
+                    $String.assert(x.str)
+                        ? $MyType.of({ ...x, str: x.str.join() + s })
+                        : $MyType.of({ ...x, str: s }),
+                isTrue: () => ($Boolean.assert(x.bool) ? x.bool : false)
+            })
+        ]) as MyTypeConstructor;
+
+        const myT = (): MyType => $MyType.of({
+            num: $Number.of(521),
+            str: $String.of('test'),
+            bool: $Boolean.of(1 === 1),
+            obj: $String.of('this aint it')
+        }) as MyType;
+
+        expect( myT ).toThrow(TypeError);
+    });
+
+    // @todo: Test $Type itself, if we need it to be a monad.
 });
