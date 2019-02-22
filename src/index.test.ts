@@ -396,7 +396,7 @@ describe('$Type generated types', () => {
         const f = (x: MonasteryMonadTypeParameters) =>
             $FirstLaw.of({
                 num: $Number.of((x.num as NumberMonad).join() + 1),
-                str: $String.of(x.str.join() + '.')
+                str: $String.of(((x.str as StringMonad).join() as string) + '.')
             });
 
         // 1. unit(x).chain(f) ==== f(x)
@@ -416,8 +416,7 @@ describe('$Type generated types', () => {
         const t = { num: 10, str: 'test' };
 
         const g = (x: MonasteryTypeParameters) =>
-            // @ts-ignore
-            $FirstLaw.of({ num: x.num + 1, str: x.str + '.' });
+            $FirstLaw.of({ num: (x.num as number) + 1, str: x.str + '.' });
 
         // 1. unit(x).chain(f) ==== f(x)
         // @ts-ignore
@@ -562,19 +561,19 @@ describe('$Type generated types', () => {
             })
         ]) as MyTypeConstructor;
 
-        expect( $MyType.of ).toThrow('Constructor must be an object.');
+        expect($MyType.of).toThrow('Constructor must be an object.');
 
-        const myT = (): MyType => $MyType.of({
-            num: $Number.of(521),
-            str: $String.of('test'),
-            bool: $Boolean.of(1 === 1),
-            obj: $Object.of({ a: 1 }),
-            thing: $String.of('this aint right')
-        }) as MyType;
+        const myT = (): MyType =>
+            $MyType.of({
+                num: $Number.of(521),
+                str: $String.of('test'),
+                bool: $Boolean.of(1 === 1),
+                obj: $Object.of({ a: 1 }),
+                thing: $String.of('this aint right')
+            }) as MyType;
 
-        expect( myT ).toThrow(TypeError);
+        expect(myT).toThrow(TypeError);
     });
-
 
     it('throws errors when the wrong type goes into a type', () => {
         interface MyTypeMethods extends TypeMethods {
@@ -605,14 +604,15 @@ describe('$Type generated types', () => {
             })
         ]) as MyTypeConstructor;
 
-        const myT = (): MyType => $MyType.of({
-            num: $Number.of(521),
-            str: $String.of('test'),
-            bool: $Boolean.of(1 === 1),
-            obj: $String.of('this aint it')
-        }) as MyType;
+        const myT = (): MyType =>
+            $MyType.of({
+                num: $Number.of(521),
+                str: $String.of('test'),
+                bool: $Boolean.of(1 === 1),
+                obj: $String.of('this aint it')
+            }) as MyType;
 
-        expect( myT ).toThrow(TypeError);
+        expect(myT).toThrow(TypeError);
     });
 
     // @todo: Test $Type itself, if we need it to be a monad.

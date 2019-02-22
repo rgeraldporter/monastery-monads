@@ -1,4 +1,5 @@
 export const $$ReflectionSymbol = Symbol('ReflectMonasteryType');
+export const $$MonasteryMonadSymbol = Symbol('MonasteryMonad');
 
 export interface Monad<T> {
     map: (f: Function) => Monad<T>;
@@ -6,6 +7,7 @@ export interface Monad<T> {
     join: () => T;
     inspect: () => string;
     readonly is: symbol;
+    [$$MonasteryMonadSymbol]: true;
 }
 
 export interface NothingMonad {
@@ -14,6 +16,7 @@ export interface NothingMonad {
     join: () => NothingMonad;
     inspect: () => string;
     readonly is: symbol;
+    [$$MonasteryMonadSymbol]: true;
 }
 
 export type PrimativeMonad =
@@ -42,6 +45,7 @@ export interface TypeMonad {
     inspect: () => string;
     readonly is: symbol;
     extend: <V extends TypeMonad>(f: Function) => V;
+    [$$MonasteryMonadSymbol]: true;
 }
 
 export interface StringMonad extends Monad<string> {

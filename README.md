@@ -6,7 +6,7 @@
 
 ### Premise
 
-Allows you to create a monad from any of the primatives (and Array) in Javascript.
+Allows you to create a monad from any of the primatives (and Array) in Javascript. Also can create other types. Experimental!!!
 
 ### Documentation
 
