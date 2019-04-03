@@ -1,4 +1,6 @@
 import {
+    JustMonad,
+    MaybeMonad,
     StringMonad,
     NumberMonad,
     SymbolMonad,
@@ -22,11 +24,13 @@ import {
     CreateTypeValue,
     $$ReflectionSymbol,
     $$MonasteryMonadSymbol,
+    $$MonasteryTypeMonadSymbol,
     NaNType,
-    PrimativeMonad
+    PrimativeMonad,
+    NothingMonad
 } from './types';
-
-import { Maybe } from 'simple-maybe';
+// @ts-ignore
+//import {Maybe} from 'simple-maybe';
 
 const _monasteryTypeSymbol = (t: string): symbol =>
     Symbol(`MonasteryMonad::${t}`);
@@ -41,8 +45,49 @@ const $$TypeSymbols: { [key: string]: symbol } = {
     $Null: _monasteryTypeSymbol('$Null'),
     $Undefined: _monasteryTypeSymbol('$Undefined'),
     $NaN: _monasteryTypeSymbol('$NaN'),
+    $Maybe: _monasteryTypeSymbol('$Maybe'),
+    $Nothing: _monasteryTypeSymbol('$Nothing'),
+    $Just: _monasteryTypeSymbol('$Just'),
     $Type: _monasteryTypeSymbol('$Type'),
     $Proto$Type$: _monasteryTypeSymbol('$Proto$Type$')
+};
+
+const $Just = <T>(x: T): JustMonad => ({
+    // @ts-ignore
+    map: (f: Function): MaybeMonad => $Maybe.of(f(x)),
+    chain: <U>(f: Function): U => f(x),
+    inspect: (): string => `$Just(${x})`,
+    join: (): T => x,
+    fork: (_: Function, f: Function) => f(x),
+    forkL: (_: Function) => $Nothing(),
+    forkR: (f: Function) => f(x),
+    // @ts-ignore
+    as: <U>(a: () => Monad<U>) => (a.check(x) ? a.of(x) : $Just(a.of)),
+    // @ts-ignore
+    defaultTo: <U>(y: U) => (x[$$MonasteryMonadSymbol] ? x(y) : y), // may need to add .defaultTo to all types then?
+    is: $$TypeSymbols.$Just,
+    [$$MonasteryMonadSymbol]: true
+});
+
+const $Nothing = (): NothingMonad => ({
+    inspect: () => `Nothing`,
+    map: _ => $Nothing(),
+    chain: _ => $Nothing(),
+    join: () => $Nothing(),
+    fork: (f: Function, _: Function) => f(),
+    forkL: (f: Function) => f(),
+    forkR: (_: Function) => $Nothing(),
+    is: $$TypeSymbols.$Nothing,
+    [$$MonasteryMonadSymbol]: true
+});
+
+const $Maybe = {
+    of: (x: unknown): MaybeMonad =>
+        x === null ||
+        x === undefined ||
+        (x as NothingMonad).is === $$TypeSymbols.$Nothing
+            ? $Nothing()
+            : $Just(x)
 };
 
 const $String = (x: string): StringMonad => ({
@@ -95,14 +140,15 @@ const $Array = <T>(x: T[]): ArrayMonad<T> => ({
     [$$MonasteryMonadSymbol]: true
 });
 
-const $ObjectDeepValue = <T>(a: {}, p: string[]): Monad<T> =>
+const $ObjectDeepValue = (a: {}, p: string[]): MaybeMonad =>
     p.reduce(
-        (acc, curKey) => acc.map((x: {}) => x[curKey as keyof {}]),
-        Maybe.of(a)
+        (acc, curKey) =>
+            acc.map((x: {}) => x[curKey as keyof {}]) as MaybeMonad,
+        $Maybe.of(a)
     );
 
-const $ObjectPropValue = <T>(a: {}, p: string): Monad<T> =>
-    Maybe.of(a[p as keyof {}]);
+const $ObjectPropValue = (a: {}, p: string): MaybeMonad =>
+    $Maybe.of(a[p as keyof {}]);
 
 const $Object = (x: {}): ObjectMonad => ({
     map: (f: Function): ObjectMonad => $Object(f(x)),
@@ -158,6 +204,7 @@ const $Proto$Type$ = (x: MonasteryMonadPropsConstructor): TypeMonad => ({
     join: (): MonasteryMonadPropsConstructor => x,
     is: $$TypeSymbols.$Proto$Type$,
     [$$MonasteryMonadSymbol]: true,
+    [$$MonasteryTypeMonadSymbol]: true,
     extend: <U extends TypeMonad>(a: Function): U => ({
         ...$Proto$Type$(x),
         ...a(x)
@@ -272,10 +319,17 @@ const $Type = {
             of: (x: unknown) => $NewType.of(x)
         };
     },
-    [$$ReflectionSymbol]: '$Type'
+    [$$ReflectionSymbol]: '$Type',
+    assert: (x: unknown): x is TypeMonad =>
+        Boolean((x as TypeMonad)[$$MonasteryTypeMonadSymbol]),
+    check: (x: unknown): x is MonasteryTypeConstructorTuple =>
+        typeof (x as MonasteryTypeConstructorTuple)[0] === 'string' &&
+        typeof (x as MonasteryTypeConstructorTuple)[1] === 'object' &&
+        (typeof (x as MonasteryTypeConstructorTuple)[2] === 'undefined' ||
+            typeof (x as MonasteryTypeConstructorTuple)[2] === 'function')
 };
 
-const $StringOf = (x: string): StringMonad => $String(String(x));
+const $StringOf = (x: string): StringMonad => $String(String(x)); // fix String(undefined) String(NaN) String(null)?
 const $NumberOf = (x: number): NumberMonad => $Number(Number(x));
 const $SymbolOf = (x: symbol): SymbolMonad =>
     typeof x === 'symbol' ? $Symbol(x) : $Symbol();
@@ -298,6 +352,7 @@ const export$Number = {
     [$$ReflectionSymbol]: '$Number',
     assert: (x: unknown): x is NumberMonad => AssertType(x, '$Number'),
     check: (x: unknown): x is number =>
+        // ts does not like parseFloat!
         // tslint:disable-next-line
         !isNaN(parseFloat(x as string)) && isFinite(x as number)
 };
@@ -318,7 +373,6 @@ const export$Symbol = {
 };
 
 const export$Array = {
-    // @ts-ignore need to figure out something for Arrays!
     of: $ArrayOf,
     [$$ReflectionSymbol]: '$Array',
     assert: <T>(x: unknown): x is ArrayMonad<T> => AssertType(x, '$Array'),
@@ -362,7 +416,6 @@ const export$NaN = {
 
 const export$Type = $Type;
 
-// @ts-ignore
 const export$$TypeSymbols = $Object($$TypeSymbols);
 
 export {

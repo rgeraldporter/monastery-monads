@@ -367,33 +367,39 @@ describe('$Symbol', () => {
 
 describe('$Type generated types', () => {
     it('should satisfy the first monad law of left identity', () => {
-        interface FirstLaw extends Monad<object> {
-            addNum: Function;
-            concatStr: Function;
-        }
-
         type FirstLawValues = {
             num: NumberMonad;
             str: StringMonad;
         };
 
-        const $FirstLaw = $Type.of([
+        interface FirstLawMethods extends TypeMethods {
+            addNum: Function;
+            concatStr: Function;
+        }
+
+        interface FirstLaw extends TypeMonad, FirstLawMethods {}
+
+        type FirstLawConstructor = {
+            of: (x: unknown) => FirstLaw;
+        };
+
+        const $FirstLaw: FirstLawConstructor = $Type.of([
             '$FirstLaw',
             { num: $Number, str: $String },
             x => ({
                 addNum: (a: number) =>
-                    $Number.assert(x.num) ? x.num.join() + a : a, // idea: .assert().fork()
+                    $Number.assert(x.num) ? x.num.join() + a : a, // idea: .assert().fork(); $Maybe.as.defaultTo instead
                 concatStr: (s: string) =>
                     $String.assert(x.str) ? x.str.join() + s : s
             })
-        ]);
+        ]) as FirstLawConstructor;
 
         const s: FirstLawValues = {
             num: $Number.of(10),
             str: $String.of('test')
         };
 
-        const f = (x: MonasteryMonadTypeParameters) =>
+        const f = (x: MonasteryMonadTypeParameters): FirstLaw =>
             $FirstLaw.of({
                 num: $Number.of((x.num as NumberMonad).join() + 1),
                 str: $String.of(((x.str as StringMonad).join() as string) + '.')
@@ -405,8 +411,8 @@ describe('$Type generated types', () => {
 
         expect(
             (leftIdentity1.join() as MonasteryMonadTypeParameters).num.join()
-            //@ts-ignore
-        ).toEqual(leftIdentity2.join().num.join());
+            // @ts-ignore
+        ).toEqual((leftIdentity2.join() as MonasteryMonadTypeParameters).num.join());
         // @ts-ignore
         expect(leftIdentity1.join().str.join()).toEqual(
             // @ts-ignore
@@ -614,6 +620,4 @@ describe('$Type generated types', () => {
 
         expect(myT).toThrow(TypeError);
     });
-
-    // @todo: Test $Type itself, if we need it to be a monad.
 });

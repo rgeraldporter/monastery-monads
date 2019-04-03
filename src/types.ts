@@ -1,5 +1,8 @@
 export const $$ReflectionSymbol = Symbol('ReflectMonasteryType');
 export const $$MonasteryMonadSymbol = Symbol('MonasteryMonad');
+export const $$MonasteryTypeMonadSymbol = Symbol('MonasteryTypeMonad');
+
+export type ChainFunction<A> = (a: A) => Monad<A>;
 
 export interface Monad<T> {
     map: (f: Function) => Monad<T>;
@@ -10,14 +13,36 @@ export interface Monad<T> {
     [$$MonasteryMonadSymbol]: true;
 }
 
+export interface NullableMonad {
+    map: (f: Function) => NullableMonad;
+    chain: (f: Function) => NullableMonad;
+    join: () => NullableMonad;
+    inspect: () => string;
+    readonly is: symbol;
+    [$$MonasteryMonadSymbol]: true;
+}
+
 export interface NothingMonad {
     map: (f: Function) => NothingMonad;
     chain: (f: Function) => NothingMonad;
     join: () => NothingMonad;
     inspect: () => string;
+    fork: <T>(f: Function, g: Function) => T;
+    forkL: <T>(f: Function) => T;
+    forkR: (_: Function) => NothingMonad;
     readonly is: symbol;
     [$$MonasteryMonadSymbol]: true;
 }
+
+export interface JustMonad extends Monad<unknown> {
+    fork: <T>(f: Function, g: Function) => T;
+    forkL: (_: Function) => NothingMonad;
+    forkR: <T>(f: Function) => T;
+    as: <T>(a: () => Monad<T>) => MaybeMonad;// what do we return?
+    defaultTo: <T>(x: T) => Monad<T>;
+}
+
+export type MaybeMonad = JustMonad | NothingMonad;
 
 export type PrimativeMonad =
     | NumberMonad
@@ -27,11 +52,10 @@ export type PrimativeMonad =
     | SymbolMonad
     | NullMonad
     | UndefinedMonad
-    | NaNMonad
-    ;
+    | NaNMonad;
 
 export interface MonasteryTypeValue {
-    [key: string]: PrimativeMonad | NothingMonad;
+    [key: string]: PrimativeMonad | NullableMonad;
 }
 
 export interface MonasteryUntypeValue {
@@ -46,6 +70,7 @@ export interface TypeMonad {
     readonly is: symbol;
     extend: <V extends TypeMonad>(f: Function) => V;
     [$$MonasteryMonadSymbol]: true;
+    [$$MonasteryTypeMonadSymbol]: true;
 }
 
 export interface StringMonad extends Monad<string> {
@@ -74,9 +99,9 @@ export interface SymbolMonad extends Monad<symbol> {}
 export interface BooleanMonad extends Monad<boolean> {}
 export interface ArrayMonad<T> extends Monad<T[]> {}
 
-export interface NullMonad extends NothingMonad {}
-export interface UndefinedMonad extends NothingMonad {}
-export interface NaNMonad extends NothingMonad {}
+export interface NullMonad extends NullableMonad {}
+export interface UndefinedMonad extends NullableMonad {}
+export interface NaNMonad extends NullableMonad {}
 
 export type MonasteryMonadTypePropertyValues =
     | string

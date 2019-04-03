@@ -2,11 +2,13 @@
 
 ### Immutable Primative Types for Javascript (and TypeScript)
 
-### NOTE: This is in early stages. Don't use this yet!
+### NOTE: This is in early stages. Don't use this yet unless you'd really like to help testing it.
 
 ### Premise
 
-Allows you to create a monad from any of the primatives (and Array) in Javascript. Also can create other types. Experimental!!!
+Allows you to create a monad from any of the primatives (and Array) in Javascript. Also can create monads of other types. This allows you to build truly immutable values, with strict type enforcement without a TypeScript or Flow.
+
+Very experimental! When this has proven usable it will be promoted version 1.x.
 
 ### Documentation
 
