@@ -6,7 +6,11 @@ import {
     $String,
     $Symbol,
     $$TypeSymbols,
-    $Type
+    $Type,
+    $Maybe,
+    $Null,
+    $Just,
+    $Nothing
 } from './index';
 import {
     ArrayMonad,
@@ -365,6 +369,137 @@ describe('$Symbol', () => {
     });
 });
 
+describe('$Maybe', () => {
+    it('should be able to fork left if Nothing', () => {
+        const answer = $Maybe.of(undefined).fork(() => 1, () => 0);
+        expect(answer).toBe(1);
+    });
+
+    it('should be able to fork right if Just', () => {
+        const answer = $Maybe.of(1).fork(() => 0, (a: number) => a);
+        expect(answer).toBe(1);
+    });
+
+    it('should be able to default to a value', () => {
+        const answer = $Maybe
+            .of(undefined)
+            // @ts-ignore
+            .as($Number)
+            .defaultTo(1);
+        expect(answer.join()).toBe(1);
+    });
+
+    it('should be able to default to the correct type value', () => {
+        const answer = $Maybe
+            .of('string')
+            // @ts-ignore
+            .as($Number)
+            .defaultTo(1);
+        expect(answer.join()).toBe(1);
+    });
+
+    it('should be able to skip the default value when the provided value validates', () => {
+        const answer = $Maybe
+            .of('string')
+            // @ts-ignore
+            .as($String)
+            .defaultTo('x');
+        expect(answer.join()).toBe('string');
+    });
+
+    it('should be able to work with objects', () => {
+        const answer = $Maybe
+            .of(null)
+            // @ts-ignore
+            .as($Object)
+            .defaultTo({ a: 1 });
+        expect(answer.join()).toEqual({ a: 1 });
+    });
+
+    it('should be able to work with arrays', () => {
+        const answer = $Maybe
+            .of({ a: 1 })
+            // @ts-ignore
+            .as($Array)
+            .defaultTo([{ a: 1 }]);
+        expect(answer.join()).toEqual([{ a: 1 }]);
+    });
+
+    it('should be able to work with arrays', () => {
+        const answer = $Maybe
+            .of({ a: 1 })
+            // @ts-ignore
+            .as($Symbol)
+            .defaultTo(Symbol('test'));
+        expect(answer.inspect()).toBe('$Symbol(Symbol(test))');
+    });
+
+    it('should be able to work with boolean', () => {
+        const answer = $Maybe
+            .of(null)
+            // @ts-ignore
+            .as($Boolean)
+            .defaultTo(true);
+        expect(answer.join()).toBe(true);
+    });
+
+    it('should not be able to set values into $Null', () => {
+        const answer = $Maybe
+            .of({ a: 1 })
+            // @ts-ignore
+            .as($Null)
+            .defaultTo({ a: 1 });
+        expect(answer.inspect()).toEqual('$Null()');
+    });
+
+    it('should be able to work with objects by allowing further chaining', () => {
+        const answer = $Maybe
+            .of(null)
+            // @ts-ignore
+            .as($Object)
+            .defaultTo({ a: 1 })
+            .path(['a'])
+            .join();
+        expect(answer).toEqual(1);
+    });
+
+    it('should be able to work with strings and continue to chain', () => {
+        const answer = $Maybe
+            .of('my string')
+            // @ts-ignore
+            .as($String)
+            .defaultTo('a string')
+            .prepend('This is ')
+            .append('.')
+            .join();
+        expect(answer).toBe('This is my string.');
+    });
+
+    it('should be able to set default number then chain', () => {
+        const answer = $Maybe
+            .of(undefined)
+            // @ts-ignore
+            .as($Number)
+            .defaultTo(2)
+            .increment()
+            .subtract(2)
+            .join();
+        expect(answer).toBe(1);
+    });
+
+    it('should be able to set real number then chain', () => {
+        const answer = $Maybe
+            .of(20)
+            // @ts-ignore
+            .as($Number)
+            .defaultTo(2)
+            .increment()
+            .subtract(2)
+            .join();
+        expect(answer).toBe(19);
+    });
+});
+
 describe('$Type generated types', () => {
     it('should satisfy the first monad law of left identity', () => {
         type FirstLawValues = {
@@ -412,7 +547,10 @@ describe('$Type generated types', () => {
         expect(
             (leftIdentity1.join() as MonasteryMonadTypeParameters).num.join()
             // @ts-ignore
-        ).toEqual((leftIdentity2.join() as MonasteryMonadTypeParameters).num.join());
+        ).toEqual(
+            // @ts-ignore
+            (leftIdentity2.join() as MonasteryMonadTypeParameters).num.join()
+        );
         // @ts-ignore
         expect(leftIdentity1.join().str.join()).toEqual(
             // @ts-ignore
@@ -619,5 +757,60 @@ describe('$Type generated types', () => {
             }) as MyType;
 
         expect(myT).toThrow(TypeError);
+    });
+});
+
+describe('README examples', () => {
+    it('should convert temperatures', () => {
+        const thermometerReadingF = 12;
+        const fahrenheitToCelsius = ($n: NumberMonad) =>
+            $n.subtract(32).multiply(0.5556);
+        const fahrenheitToKelvin = ($n: NumberMonad) =>
+            fahrenheitToCelsius($n).add(273.15);
+        const fahrenheitToRankine = ($n: NumberMonad) => $n.add(459.67);
+
+        const temperature = $Number.of(thermometerReadingF);
+
+        const celsius = fahrenheitToCelsius(temperature).emit();
+        const kelvin = fahrenheitToKelvin(temperature).emit();
+        const rankine = fahrenheitToRankine(temperature).emit();
+
+        expect(celsius.toFixed(1)).toBe('-11.1');
+        expect(kelvin.toFixed(1)).toBe('262.0');
+        expect(rankine.toFixed(1)).toBe('471.7');
+    });
+
+    it('should do the example log string correctly', () => {
+        const logString = 'Value was over the threshold ';
+        const tag = 'log';
+
+        const formatForConsole = ($str: StringMonad) =>
+            $str.prepend(`[${tag}] `);
+        const formatForDb = ($str: StringMonad) => $str.trim();
+
+        const logEntry = $String.of(logString);
+        const logConsole = formatForConsole(logEntry).emit();
+        const logDb = formatForDb(logEntry).emit();
+
+        expect(logConsole).toBe('[log] Value was over the threshold ');
+        expect(logDb).toBe('Value was over the threshold');
+    });
+
+    it('handle the string example', () => {
+        const status1 = null;
+        const status2 = 'Away';
+        const statusText = ($str: unknown) =>
+            $Maybe
+                .of($str)
+                // @ts-ignore
+                .as($String)
+                .defaultTo('None');
+
+        // Extend further with $String
+        const logStatusText = statusText(status2).prepend(`[user-status] `);
+
+        expect(statusText(status1).emit()).toBe('None');
+        expect(statusText(status2).emit()).toBe('Away');
+        expect(logStatusText.emit()).toBe('[user-status] Away');
     });
 });

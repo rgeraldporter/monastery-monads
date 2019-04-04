@@ -29,8 +29,6 @@ import {
     PrimativeMonad,
     NothingMonad
 } from './types';
-// @ts-ignore
-//import {Maybe} from 'simple-maybe';
 
 const _monasteryTypeSymbol = (t: string): symbol =>
     Symbol(`MonasteryMonad::${t}`);
@@ -58,13 +56,14 @@ const $Just = <T>(x: T): JustMonad => ({
     chain: <U>(f: Function): U => f(x),
     inspect: (): string => `$Just(${x})`,
     join: (): T => x,
+    emit: (): T => x,
     fork: (_: Function, f: Function) => f(x),
     forkL: (_: Function) => $Nothing(),
     forkR: (f: Function) => f(x),
     // @ts-ignore
-    as: <U>(a: () => Monad<U>) => (a.check(x) ? a.of(x) : $Just(a.of)),
+    as: <U>(a: () => Monad<U>) => (a.check(x) ? a.of(x) : $Just(a)),
     // @ts-ignore
-    defaultTo: <U>(y: U) => (x[$$MonasteryMonadSymbol] ? x(y) : y), // may need to add .defaultTo to all types then?
+    defaultTo: <U>(y: U) => (x[$$ReflectionSymbol] ? x.of(y) : x), // may need to add .defaultTo to all types then?
     is: $$TypeSymbols.$Just,
     [$$MonasteryMonadSymbol]: true
 });
@@ -74,9 +73,12 @@ const $Nothing = (): NothingMonad => ({
     map: _ => $Nothing(),
     chain: _ => $Nothing(),
     join: () => $Nothing(),
+    emit: () => $Nothing(),
     fork: (f: Function, _: Function) => f(),
     forkL: (f: Function) => f(),
     forkR: (_: Function) => $Nothing(),
+    // @ts-ignore
+    as: <U>(a: () => Monad<U>) => $Just(a),
     is: $$TypeSymbols.$Nothing,
     [$$MonasteryMonadSymbol]: true
 });
@@ -95,12 +97,14 @@ const $String = (x: string): StringMonad => ({
     chain: <T>(f: Function): T => f(x),
     inspect: (): string => `$String(${x})`,
     join: (): string => x,
+    emit: (): string => x,
     prepend: (s: string): StringMonad => $String(`${s}${x}`),
     append: (s: string): StringMonad => $String(`${x}${s}`),
     substring: (i: number, j?: number): StringMonad =>
         // so x.substring does weird things when i > j; do we want to fix that? Or be consistent with method?
         $String(x.substring(i, j || Infinity)),
     trim: (): StringMonad => $String(x.trim()),
+    defaultTo: <U>(_: U) => $String(x),
     is: $$TypeSymbols.$String,
     [$$MonasteryMonadSymbol]: true
 });
@@ -110,6 +114,7 @@ const $Number = (x: number): NumberMonad => ({
     chain: <T>(f: Function): T => f(x),
     inspect: (): string => `$Number(${x})`,
     join: (): number => x,
+    emit: (): number => x,
     increment: (n = 1): NumberMonad => $Number(x + n),
     decrement: (n = 1): NumberMonad => $Number(x - n),
     add: (n: number): NumberMonad => $Number(x + n),
@@ -118,6 +123,7 @@ const $Number = (x: number): NumberMonad => ({
     divide: (n: number): NumberMonad =>
         n === 0 ? $Number(Infinity) : $Number(x / n),
     equals: (n: number): boolean => n === x,
+    defaultTo: <U>(_: U) => $Number(x),
     is: $$TypeSymbols.$Number,
     [$$MonasteryMonadSymbol]: true
 });
@@ -127,6 +133,8 @@ const $Symbol = (x: symbol = Symbol()): SymbolMonad => ({
     chain: <T>(f: Function): T => f(x),
     inspect: (): string => `$Symbol(${String(x)})`,
     join: (): symbol => x,
+    emit: (): symbol => x,
+    defaultTo: <U>(_: U) => $Symbol(x),
     is: $$TypeSymbols.$Symbol,
     [$$MonasteryMonadSymbol]: true
 });
@@ -136,6 +144,8 @@ const $Array = <T>(x: T[]): ArrayMonad<T> => ({
     chain: <U>(f: Function): U => f(x),
     inspect: (): string => `$Array(${x})`,
     join: (): T[] => x,
+    emit: (): T[] => x,
+    defaultTo: <U>(_: U) => $Array(x),
     is: $$TypeSymbols.$Array,
     [$$MonasteryMonadSymbol]: true
 });
@@ -155,8 +165,10 @@ const $Object = (x: {}): ObjectMonad => ({
     chain: <T>(f: Function): T => f(x),
     inspect: (): string => `$Object(${x})`,
     join: (): {} => x,
+    emit: (): {} => x,
     path: (p: string[]): {} => $ObjectDeepValue(x, p),
     prop: (p: string): {} => $ObjectPropValue(x, p),
+    defaultTo: <U>(_: U) => $Object(x),
     is: $$TypeSymbols.$Object,
     [$$MonasteryMonadSymbol]: true
 });
@@ -166,6 +178,8 @@ const $Boolean = (x: boolean): BooleanMonad => ({
     chain: <T>(f: Function): T => f(x),
     inspect: (): string => `$String(${x})`,
     join: (): boolean => x,
+    emit: (): boolean => x,
+    defaultTo: <U>(_: U) => $Boolean(x),
     is: $$TypeSymbols.$Boolean,
     [$$MonasteryMonadSymbol]: true
 });
@@ -175,6 +189,8 @@ const $Null = (): NullMonad => ({
     chain: <T>(f: Function): NullMonad => $Null(),
     inspect: (): string => `$Null()`,
     join: (): NullMonad => $Null(),
+    emit: (): NullMonad => $Null(),
+    defaultTo: <U>(_: U) => $Null(),
     is: $$TypeSymbols.$Null,
     [$$MonasteryMonadSymbol]: true
 });
@@ -184,6 +200,8 @@ const $Undefined = (): UndefinedMonad => ({
     chain: <T>(f: Function): UndefinedMonad => $Undefined(),
     inspect: (): string => `$Undefined()`,
     join: (): UndefinedMonad => $Undefined(),
+    emit: (): UndefinedMonad => $Undefined(),
+    defaultTo: <U>(_: U) => $Undefined(),
     is: $$TypeSymbols.$Undefined,
     [$$MonasteryMonadSymbol]: true
 });
@@ -193,6 +211,8 @@ const $NaN = (): NaNMonad => ({
     chain: <T>(f: Function): NaNMonad => $NaN(),
     inspect: (): string => `$NaN()`,
     join: (): NaNMonad => $NaN(),
+    emit: (): NaNMonad => $NaN(),
+    defaultTo: <U>(_: U) => $NaN(),
     is: $$TypeSymbols.$NaN,
     [$$MonasteryMonadSymbol]: true
 });
@@ -202,6 +222,8 @@ const $Proto$Type$ = (x: MonasteryMonadPropsConstructor): TypeMonad => ({
     chain: <T>(f: Function): T => f(x),
     inspect: (): string => `$Proto$Type$(${x})`,
     join: (): MonasteryMonadPropsConstructor => x,
+    emit: (): MonasteryMonadPropsConstructor => x,
+    defaultTo: <U>(_: U) => $Proto$Type$(x),
     is: $$TypeSymbols.$Proto$Type$,
     [$$MonasteryMonadSymbol]: true,
     [$$MonasteryTypeMonadSymbol]: true,
@@ -309,6 +331,7 @@ const $CreateType$ = ({ methods, name, props }: CreateTypeValue) => ({
         return $CreateTypeMonad({ props: startingProps, name, methods });
     },
     [$$ReflectionSymbol]: name
+    // @todo check, assert
 });
 
 const $Type = {
@@ -430,5 +453,8 @@ export {
     export$NaN as $NaN,
     export$Type as $Type,
     export$$TypeSymbols as $$TypeSymbols,
+    $Maybe,
+    $Just,
+    $Nothing,
     $$ReflectionSymbol
 };

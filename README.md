@@ -1,18 +1,107 @@
 # ️️️️⛪️️ Monastery ⛪️
 
-### Immutable Primative Types for Javascript (and TypeScript)
+## Safe Monadic Types for Javascript (and TypeScript)
 
-### NOTE: This is in early stages. Don't use this yet unless you'd really like to help testing it.
+NOTE: This is in early stages. Don't use this yet unless you'd really like to help testing it.
 
-### Premise
+## Premise
 
-Allows you to create a monad from any of the primatives (and Array) in Javascript. Also can create monads of other types. This allows you to build truly immutable values, with strict type enforcement without a TypeScript or Flow.
+This module allows you to create a monad of any of the primatives (plus Array and a Maybe type), or build your own. This can allow you to build truly immutable values (including `Object` and `Array`) and comes runtime type enforcement without adding a type system such as TypeScript or Flow.
 
-Very experimental! When this has proven usable it will be promoted version 1.x.
+This is very experimental! When this has proven usable it will be promoted version 1.x.
 
-### Documentation
+## Documentation
 
-Coming soon! See unit test for examples for now.
+Put simply there are three types of monads in here: Primatives, Maybe, and custom Types.
+
+_This is a work in progress, more documentation is forthcoming._
+
+### Primative Monads
+
+Each primative is the name of the Javascript primative (and some other things), prepended with `$`:
+
+-   `$Number`
+-   `$String`
+-   `$Boolean`
+-   `$Array`
+-   `$Object`
+-   `$Symbol`
+-   `$Null`
+-   `$NaN`
+-   `$Undefined`
+
+#### `$Number`
+
+```js
+const thermometerReadingF = 12; // source data is in Fahrenheit
+const fahrenheitToCelsius = $n => $n.subtract(32).multiply(0.5556);
+const fahrenheitToKelvin = $n => fahrenheitToCelsius($n).add(273.15);
+const fahrenheitToRankine = $n => $n.add(459.67);
+
+const temperature = $Number.of(thermometerReadingF);
+
+const celsius = fahrenheitToCelsius(temperature).emit();
+const kelvin = fahrenheitToKelvin(temperature).emit();
+const rankine = fahrenheitToRankine(temperature).emit();
+
+// Note: .toFixed(1) converts to string
+// > "-11.1"
+console.log(celsius.toFixed(1));
+
+// > "262.0"
+console.log(kelvin.toFixed(1));
+
+// > "471.7"
+console.log(rankine.toFixed(1));
+```
+
+#### `$String`
+
+```js
+const logString = 'Value was over the threshold ';
+const tag = 'log';
+
+const formatForConsole = $str => $str.prepend(`[${tag}] `);
+const formatForDb = $str => $str.trim();
+
+const logEntry = $String.of(logString);
+const logConsole = formatForConsole(logEntry).emit();
+const logDb = formatForDb(logEntry).emit();
+
+// > "[log] Value was over the threshold "
+console.log(logConsole);
+
+// > "Value was over the threshold"
+console.log(logDb);
+```
+
+## Maybe Monad
+
+### `$Maybe`
+
+This is a typical `Maybe` monad with some extra capabilities to enforce type. Generally a `Maybe` involves checking when a value "may be something or may be nothing", in this implementation it also can be interpreted that a value "may be of a certain type".
+
+```js
+const status1 = null;
+const status2 = 'Away';
+const statusText = $str =>
+    $Maybe
+        .of($str)
+        .as($String)
+        .defaultTo('None');
+
+// > "None"
+console.log(statusText(status1).emit());
+
+// > "Away"
+console.log(statusText(status2).emit());
+
+// Extend further with $String
+const logStatusText = statusText(status2).prepend(`[user-status] `);
+
+// > "[user-status] Away"
+console.log(logStatusText.emit());
+```
 
 ## Development
 

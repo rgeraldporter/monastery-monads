@@ -8,7 +8,9 @@ export interface Monad<T> {
     map: (f: Function) => Monad<T>;
     chain: <U>(f: Function) => Monad<U>;
     join: () => T;
+    emit: () => T;
     inspect: () => string;
+    defaultTo: (a: unknown) => Monad<unknown>;
     readonly is: symbol;
     [$$MonasteryMonadSymbol]: true;
 }
@@ -17,7 +19,9 @@ export interface NullableMonad {
     map: (f: Function) => NullableMonad;
     chain: (f: Function) => NullableMonad;
     join: () => NullableMonad;
+    emit: () => NullableMonad;
     inspect: () => string;
+    defaultTo: (a: unknown) => NullableMonad;
     readonly is: symbol;
     [$$MonasteryMonadSymbol]: true;
 }
@@ -26,10 +30,12 @@ export interface NothingMonad {
     map: (f: Function) => NothingMonad;
     chain: (f: Function) => NothingMonad;
     join: () => NothingMonad;
+    emit: () => NothingMonad;
     inspect: () => string;
     fork: <T>(f: Function, g: Function) => T;
     forkL: <T>(f: Function) => T;
     forkR: (_: Function) => NothingMonad;
+    as: <T>(a: () => Monad<T>) => MaybeMonad;
     readonly is: symbol;
     [$$MonasteryMonadSymbol]: true;
 }
@@ -66,9 +72,11 @@ export interface TypeMonad {
     map: (f: Function) => TypeMonad;
     chain: <U>(f: Function) => Monad<U>;
     join: () => MonasteryMonadPropsConstructor;
+    emit: () => MonasteryMonadPropsConstructor;
     inspect: () => string;
     readonly is: symbol;
     extend: <V extends TypeMonad>(f: Function) => V;
+    defaultTo: (a: unknown) => TypeMonad;
     [$$MonasteryMonadSymbol]: true;
     [$$MonasteryTypeMonadSymbol]: true;
 }
