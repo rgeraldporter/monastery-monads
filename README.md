@@ -2,23 +2,25 @@
 
 ## Safe Monadic Types for Javascript (and TypeScript)
 
-NOTE: This is in early stages. Don't use this yet unless you'd really like to help testing it.
-
 ## Premise
 
 This module allows you to create a monad of any of the primatives (plus Array and a Maybe type), or build your own. This can allow you to build truly immutable values (including `Object` and `Array`) and comes runtime type enforcement without adding a type system such as TypeScript or Flow.
 
-This is very experimental! When this has proven usable it will be promoted version 1.x.
+## Status
+
+This is in an experimental stage! When this has proven usable it will be promoted as a version 1.0.
+
+So far I am not aware of any technical flaws other than some TypeScript `@ts-ignore` markers that need to be fixed and removed. However, I feel that a project of this kind requires extensive proof through testing and examples before making claims of stability.
 
 ## Documentation
 
-Put simply there are three types of monads in here: Primatives, Maybe, and custom Types.
+There are four types of monads in Monastery: Primatives, Data Structures, Maybe, and custom Types.
 
-_This is a work in progress, more documentation is forthcoming._
+_This is a work in progress, and thus documentation is incomplete._
 
-### Primative Monads
+### Primative Monads & Data Structure Monads
 
-Each primative is the name of the Javascript primative (and some other things), prepended with `$`:
+Each primative is the name of the Javascript primative or data structure, prepended with `$`:
 
 -   `$Number`
 -   `$String`
