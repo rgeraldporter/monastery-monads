@@ -1,4 +1,4 @@
-name = "rgeraldporter@entropic.dev/monastery-monads"
+name = "rgeraldporter@registry.entropic.dev/monastery-monads"
 version = "0.5.1"
 
 [devDependencies]
