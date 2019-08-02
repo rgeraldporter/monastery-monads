@@ -1,16 +1,23 @@
-export const $$ReflectionSymbol = Symbol('ReflectMonasteryType');
+export const $$TypeReflectionSymbol = Symbol('ReflectMonasteryType');
 export const $$MonasteryMonadSymbol = Symbol('MonasteryMonad');
 export const $$MonasteryTypeMonadSymbol = Symbol('MonasteryTypeMonad');
 
-export type ChainFunction<A> = (a: A) => Monad<A>;
+export type ChainFunction<A> = (a: A) => A;
+
 
 export interface Monad<T> {
+    //map: <B>(f: (x?: T) => B) => Monad<B>;
     map: (f: Function) => Monad<T>;
-    chain: <U>(f: Function) => Monad<U>;
-    join: () => T;
-    emit: () => T;
+    chain: (f: Function) => Monad<unknown>;
+    // joins and unwraps you can't really know what they're going to spit out...
+    // tslint:disable-next-line:no-any
+    join: () => any;
+    // tslint:disable-next-line:no-any
+    emit: () => any;
+    // tslint:disable-next-line:no-any
+    unwrap: () => any;
     inspect: () => string;
-    defaultTo: (a: unknown) => Monad<unknown>;
+    defaultTo: (x: unknown) => Monad<unknown>;
     readonly is: symbol;
     [$$MonasteryMonadSymbol]: true;
 }
@@ -19,6 +26,7 @@ export interface NullableMonad {
     map: (f: Function) => NullableMonad;
     chain: (f: Function) => NullableMonad;
     join: () => NullableMonad;
+    unwrap: () => NullableMonad;
     emit: () => NullableMonad;
     inspect: () => string;
     defaultTo: (a: unknown) => NullableMonad;
@@ -26,29 +34,24 @@ export interface NullableMonad {
     [$$MonasteryMonadSymbol]: true;
 }
 
-export interface NothingMonad {
-    map: (f: Function) => NothingMonad;
-    chain: (f: Function) => NothingMonad;
+export interface NothingMonad extends Monad<unknown> {
     join: () => NothingMonad;
     emit: () => NothingMonad;
+    unwrap: () => NothingMonad;
     inspect: () => string;
     fork: <T>(f: Function, g: Function) => T;
-    forkL: <T>(f: Function) => T;
-    forkR: (_: Function) => NothingMonad;
-    as: <T>(a: () => Monad<T>) => MaybeMonad;
+    as: <ValueT, MonadT>(a: MonasteryMonadConstructor<ValueT, MonadT>) => MonadT;
     readonly is: symbol;
     [$$MonasteryMonadSymbol]: true;
 }
 
 export interface JustMonad extends Monad<unknown> {
     fork: <T>(f: Function, g: Function) => T;
-    forkL: (_: Function) => NothingMonad;
-    forkR: <T>(f: Function) => T;
-    as: <T>(a: () => Monad<T>) => MaybeMonad;// what do we return?
-    defaultTo: <T>(x: T) => Monad<T>;
+    as: <ValueT, MonadT>(a: MonasteryMonadConstructor<ValueT, MonadT>) => MonadT;
+    defaultTo: <ValueT>(x: ValueT) => Monad<ValueT>;
 }
 
-export type MaybeMonad = JustMonad | NothingMonad;
+export type MaybeMonad = JustMonad & NothingMonad;
 
 export type PrimativeMonad =
     | NumberMonad
@@ -73,6 +76,7 @@ export interface TypeMonad {
     chain: <U>(f: Function) => Monad<U>;
     join: () => MonasteryMonadPropsConstructor;
     emit: () => MonasteryMonadPropsConstructor;
+    unwrap: () => MonasteryMonadPropsConstructor;
     inspect: () => string;
     readonly is: symbol;
     extend: <V extends TypeMonad>(f: Function) => V;
@@ -86,6 +90,7 @@ export interface StringMonad extends Monad<string> {
     append: (s: string) => StringMonad;
     substring: (i: number, j?: number) => StringMonad;
     trim: () => StringMonad;
+    defaultTo: (a: unknown) => StringMonad;
 }
 
 export interface NumberMonad extends Monad<number> {
@@ -96,20 +101,38 @@ export interface NumberMonad extends Monad<number> {
     multiply: (by: number) => NumberMonad;
     divide: (by: number) => NumberMonad;
     equals: (n: number) => boolean;
+    defaultTo: (a: unknown) => NumberMonad;
 }
 
 export interface ObjectMonad extends Monad<object> {
     path: Function;
     prop: Function;
+    defaultTo: (a: unknown) => ObjectMonad;
 }
 
-export interface SymbolMonad extends Monad<symbol> {}
-export interface BooleanMonad extends Monad<boolean> {}
-export interface ArrayMonad<T> extends Monad<T[]> {}
+export interface SymbolMonad extends Monad<symbol> {
+    defaultTo: (a: unknown) => SymbolMonad;
+}
 
-export interface NullMonad extends NullableMonad {}
-export interface UndefinedMonad extends NullableMonad {}
-export interface NaNMonad extends NullableMonad {}
+export interface BooleanMonad extends Monad<boolean> {
+    defaultTo: (a: unknown) => BooleanMonad;
+}
+
+export interface ArrayMonad<T> extends Monad<T[]> {
+    defaultTo: (a: unknown) => ArrayMonad<T>;
+}
+
+export interface NullMonad extends NullableMonad {
+    defaultTo: (a: unknown) => NullMonad;
+}
+
+export interface UndefinedMonad extends NullableMonad {
+    defaultTo: (a: unknown) => UndefinedMonad;
+}
+
+export interface NaNMonad extends NullableMonad {
+    defaultTo: (a: unknown) => NaNMonad;
+}
 
 export type MonasteryMonadTypePropertyValues =
     | string
@@ -135,14 +158,14 @@ export type MonasteryUnknownParameters = {
 };
 
 export type MonasteryMonadPropsConstructor = {
-    [key: string]: MonasteryMonadConstructor;
+    [key: string]: MonasteryMonadConstructor<unknown, unknown>;
 };
 
-export type MonasteryMonadConstructor = {
-    of: (x: MonasteryMonadTypePropertyValuesIntersection) => PrimativeMonad;
-    [$$ReflectionSymbol]: string;
-    assert: Function;
-    check: Function;
+export type MonasteryMonadConstructor<ValueT, MonadT> = {
+    of: (x: ValueT) => MonadT;
+    [$$TypeReflectionSymbol]: string;
+    assert: (x: unknown) => x is MonadT;
+    check: (x: unknown) => x is ValueT;
 };
 
 export type TypeMethods = {

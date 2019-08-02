@@ -22,7 +22,7 @@ import {
     MonasteryTypeParameters,
     TypeMonad,
     CreateTypeValue,
-    $$ReflectionSymbol,
+    $$TypeReflectionSymbol,
     $$MonasteryMonadSymbol,
     $$MonasteryTypeMonadSymbol,
     NaNType,
@@ -50,20 +50,23 @@ const $$TypeSymbols: { [key: string]: symbol } = {
     $Proto$Type$: _monasteryTypeSymbol('$Proto$Type$')
 };
 
-const $Just = <T>(x: T): JustMonad => ({
-    // @ts-ignore
-    map: (f: Function): MaybeMonad => $Maybe.of(f(x)),
+const $Just = <ValueT>(x: ValueT): JustMonad => ({
+    map: (f) => $Maybe.of(f(x)),
     chain: <U>(f: Function): U => f(x),
     inspect: (): string => `$Just(${x})`,
-    join: (): T => x,
-    emit: (): T => x,
+    join: (): ValueT => x,
+    emit: (): ValueT => x,
+    unwrap: (): ValueT => x,
     fork: (_: Function, f: Function) => f(x),
-    forkL: (_: Function) => $Nothing(),
-    forkR: (f: Function) => f(x),
-    // @ts-ignore
-    as: <U>(a: () => Monad<U>) => (a.check(x) ? a.of(x) : $Just(a)),
-    // @ts-ignore
-    defaultTo: <U>(y: U) => (x[$$ReflectionSymbol] ? x.of(y) : x), // may need to add .defaultTo to all types then?
+    // takes a constructor, if check passes, makes it that type, if not, passes type back as Just(TypeConstructor())
+    // @ts-ignore can't seem to get it to understand the check is JustMonad | MonadT3; leads to errors in checking that shouldn't be
+    as: <ValueT2, MonadT2>(a: MonasteryMonadConstructor<ValueT2, MonadT2>) => (a.check(x) ? a.of(x) : $Just(a)),
+    defaultTo: <ValueT3, MonadT3>(y: ValueT3): MonadT3 => (x as unknown as MonasteryMonadConstructor<ValueT3, MonadT3>).of(y) as MonadT3,
+    /*(x as unknown as MonasteryMonadConstructor<unknown, unknown>)[$$TypeReflectionSymbol]
+            && (x as unknown as MonasteryMonadConstructor<unknown, unknown>).of
+        ? (x as unknown as MonasteryMonadConstructor<unknown, unknown>).of(y)
+        : x as never, // should never reach here, unless bad constructor was passed. @todo, add error
+    */
     is: $$TypeSymbols.$Just,
     [$$MonasteryMonadSymbol]: true
 });
@@ -74,11 +77,12 @@ const $Nothing = (): NothingMonad => ({
     chain: _ => $Nothing(),
     join: () => $Nothing(),
     emit: () => $Nothing(),
+    unwrap: () => $Nothing(),
     fork: (f: Function, _: Function) => f(),
-    forkL: (f: Function) => f(),
-    forkR: (_: Function) => $Nothing(),
-    // @ts-ignore
-    as: <U>(a: () => Monad<U>) => $Just(a),
+    // Maybe this type is why the error below
+    // @ts-ignore can't seem to get it to understand the check is JustMonad | MonadT3; leads to errors in checking that shouldn't be
+    as: <ValueT2, MonadT2>(a: MonasteryMonadConstructor<ValueT2, MonadT2>) => $Just(a),
+    defaultTo: () => $Nothing(),
     is: $$TypeSymbols.$Nothing,
     [$$MonasteryMonadSymbol]: true
 });
@@ -86,8 +90,8 @@ const $Nothing = (): NothingMonad => ({
 const $Maybe = {
     of: (x: unknown): MaybeMonad =>
         x === null ||
-        x === undefined ||
-        (x as NothingMonad).is === $$TypeSymbols.$Nothing
+            x === undefined ||
+            (x as NothingMonad).is === $$TypeSymbols.$Nothing
             ? $Nothing()
             : $Just(x)
 };
@@ -98,6 +102,7 @@ const $String = (x: string): StringMonad => ({
     inspect: (): string => `$String(${x})`,
     join: (): string => x,
     emit: (): string => x,
+    unwrap: (): string => x,
     prepend: (s: string): StringMonad => $String(`${s}${x}`),
     append: (s: string): StringMonad => $String(`${x}${s}`),
     substring: (i: number, j?: number): StringMonad =>
@@ -115,6 +120,7 @@ const $Number = (x: number): NumberMonad => ({
     inspect: (): string => `$Number(${x})`,
     join: (): number => x,
     emit: (): number => x,
+    unwrap: (): number => x,
     increment: (n = 1): NumberMonad => $Number(x + n),
     decrement: (n = 1): NumberMonad => $Number(x - n),
     add: (n: number): NumberMonad => $Number(x + n),
@@ -134,6 +140,7 @@ const $Symbol = (x: symbol = Symbol()): SymbolMonad => ({
     inspect: (): string => `$Symbol(${String(x)})`,
     join: (): symbol => x,
     emit: (): symbol => x,
+    unwrap: (): symbol => x,
     defaultTo: <U>(_: U) => $Symbol(x),
     is: $$TypeSymbols.$Symbol,
     [$$MonasteryMonadSymbol]: true
@@ -145,6 +152,7 @@ const $Array = <T>(x: T[]): ArrayMonad<T> => ({
     inspect: (): string => `$Array(${x})`,
     join: (): T[] => x,
     emit: (): T[] => x,
+    unwrap: (): T[] => x,
     defaultTo: <U>(_: U) => $Array(x),
     is: $$TypeSymbols.$Array,
     [$$MonasteryMonadSymbol]: true
@@ -166,9 +174,10 @@ const $Object = (x: {}): ObjectMonad => ({
     inspect: (): string => `$Object(${x})`,
     join: (): {} => x,
     emit: (): {} => x,
+    unwrap: (): {} => x,
     path: (p: string[]): {} => $ObjectDeepValue(x, p),
     prop: (p: string): {} => $ObjectPropValue(x, p),
-    defaultTo: <U>(_: U) => $Object(x),
+    defaultTo: <UnusedT>(_: UnusedT): ObjectMonad => $Object(x), // no-op
     is: $$TypeSymbols.$Object,
     [$$MonasteryMonadSymbol]: true
 });
@@ -179,6 +188,7 @@ const $Boolean = (x: boolean): BooleanMonad => ({
     inspect: (): string => `$String(${x})`,
     join: (): boolean => x,
     emit: (): boolean => x,
+    unwrap: (): boolean => x,
     defaultTo: <U>(_: U) => $Boolean(x),
     is: $$TypeSymbols.$Boolean,
     [$$MonasteryMonadSymbol]: true
@@ -190,6 +200,7 @@ const $Null = (): NullMonad => ({
     inspect: (): string => `$Null()`,
     join: (): NullMonad => $Null(),
     emit: (): NullMonad => $Null(),
+    unwrap: (): NullMonad => $Null(),
     defaultTo: <U>(_: U) => $Null(),
     is: $$TypeSymbols.$Null,
     [$$MonasteryMonadSymbol]: true
@@ -201,6 +212,7 @@ const $Undefined = (): UndefinedMonad => ({
     inspect: (): string => `$Undefined()`,
     join: (): UndefinedMonad => $Undefined(),
     emit: (): UndefinedMonad => $Undefined(),
+    unwrap: (): UndefinedMonad => $Undefined(),
     defaultTo: <U>(_: U) => $Undefined(),
     is: $$TypeSymbols.$Undefined,
     [$$MonasteryMonadSymbol]: true
@@ -212,6 +224,7 @@ const $NaN = (): NaNMonad => ({
     inspect: (): string => `$NaN()`,
     join: (): NaNMonad => $NaN(),
     emit: (): NaNMonad => $NaN(),
+    unwrap: (): NaNMonad => $NaN(),
     defaultTo: <U>(_: U) => $NaN(),
     is: $$TypeSymbols.$NaN,
     [$$MonasteryMonadSymbol]: true
@@ -223,6 +236,7 @@ const $Proto$Type$ = (x: MonasteryMonadPropsConstructor): TypeMonad => ({
     inspect: (): string => `$Proto$Type$(${x})`,
     join: (): MonasteryMonadPropsConstructor => x,
     emit: (): MonasteryMonadPropsConstructor => x,
+    unwrap: (): MonasteryMonadPropsConstructor => x,
     defaultTo: <U>(_: U) => $Proto$Type$(x),
     is: $$TypeSymbols.$Proto$Type$,
     [$$MonasteryMonadSymbol]: true,
@@ -265,7 +279,7 @@ const $CreateTypeMonad = ({ props, name, methods }: CreateTypeValue) => {
 };
 
 const assertValueType = (
-    expectedType: MonasteryMonadConstructor,
+    expectedType: MonasteryMonadConstructor<unknown, unknown>,
     value: unknown
 ) => {
     const isMonasteryMonad = (value as Monad<unknown>)[$$MonasteryMonadSymbol];
@@ -277,13 +291,13 @@ const assertValueType = (
     if (!expectedType.check(value)) {
         throw new TypeError(
             `Wrong type! ${
-                expectedType[$$ReflectionSymbol]
+            expectedType[$$TypeReflectionSymbol]
             } was expected, got ${value}`
         );
     } else if (isWrongMonadType) {
         throw new TypeError(
             `Wrong type! ${
-                expectedType[$$ReflectionSymbol]
+            expectedType[$$TypeReflectionSymbol]
             } was expected, got ${value}`
         );
     } else {
@@ -293,11 +307,11 @@ const assertValueType = (
 };
 
 const validatePropType = (
-    expectedType: MonasteryMonadConstructor,
+    expectedType: MonasteryMonadConstructor<unknown, unknown>,
     value: unknown
 ) => {
     return (
-        $$TypeSymbols[expectedType[$$ReflectionSymbol]] &&
+        $$TypeSymbols[expectedType[$$TypeReflectionSymbol]] &&
         assertValueType(expectedType, value)
     );
 };
@@ -318,19 +332,20 @@ const $CreateType$ = ({ methods, name, props }: CreateTypeValue) => ({
                     (x as {})[curKey as keyof {}]
                 ) // @todo validate correct type
                     ? (x as MonasteryMonadTypeParameters)[curKey]
+                    // @ts-ignore
                     : props[curKey]
-                          .of(
-                              (x as MonasteryMonadTypePropertyValuesIntersection)[
-                                  curKey
-                              ]
-                          )
-                          .join()
+                        .of(
+                            (x as MonasteryMonadTypePropertyValuesIntersection)[
+                            curKey
+                            ]
+                        )
+                        .join()
             }),
             {}
         );
         return $CreateTypeMonad({ props: startingProps, name, methods });
     },
-    [$$ReflectionSymbol]: name
+    [$$TypeReflectionSymbol]: name
     // @todo check, assert
 });
 
@@ -342,7 +357,7 @@ const $Type = {
             of: (x: unknown) => $NewType.of(x)
         };
     },
-    [$$ReflectionSymbol]: '$Type',
+    [$$TypeReflectionSymbol]: '$Type',
     assert: (x: unknown): x is TypeMonad =>
         Boolean((x as TypeMonad)[$$MonasteryTypeMonadSymbol]),
     check: (x: unknown): x is MonasteryTypeConstructorTuple =>
@@ -357,7 +372,7 @@ const $NumberOf = (x: number): NumberMonad => $Number(Number(x));
 const $SymbolOf = (x: symbol): SymbolMonad =>
     typeof x === 'symbol' ? $Symbol(x) : $Symbol();
 const $ArrayOf = <T>(x: T[]): ArrayMonad<T> =>
-    Array.isArray(x) ? $Array(x) : $Array([x]);
+    Array.isArray(x) ? $Array(x as T[]) : $Array([x as T]);
 const $ObjectOf = (x: {}): ObjectMonad =>
     x === Object(x) ? $Object(x) : $Object(Object(x));
 const $BooleanOf = (x: boolean): BooleanMonad => $Boolean(Boolean(x));
@@ -370,9 +385,18 @@ const AssertType = (x: unknown, t: string): boolean =>
         ? (x as PrimativeMonad)['is'] === $$TypeSymbols[t]
         : false;
 
-const export$Number = {
+/*interface Primative
+
+interface ProtoTypeMonad {
+    of: () => Monad<unknown>;
+    [$$TypeReflectionSymbol]: string;
+    assert: (x: unknown) => boolean;
+    check: (x: unknown) => boolean;
+}*/
+
+const export$Number: MonasteryMonadConstructor<number, NumberMonad> = {
     of: $NumberOf,
-    [$$ReflectionSymbol]: '$Number',
+    [$$TypeReflectionSymbol]: '$Number',
     assert: (x: unknown): x is NumberMonad => AssertType(x, '$Number'),
     check: (x: unknown): x is number =>
         // ts does not like parseFloat!
@@ -380,59 +404,59 @@ const export$Number = {
         !isNaN(parseFloat(x as string)) && isFinite(x as number)
 };
 
-const export$String = {
+const export$String: MonasteryMonadConstructor<string, StringMonad> = {
     of: $StringOf,
-    [$$ReflectionSymbol]: '$String',
+    [$$TypeReflectionSymbol]: '$String',
     assert: (x: unknown): x is StringMonad => AssertType(x, '$String'),
     check: (x: unknown): x is string =>
         Object.prototype.toString.call(x) === '[object String]'
 };
 
-const export$Symbol = {
+const export$Symbol: MonasteryMonadConstructor<symbol, SymbolMonad> = {
     of: $SymbolOf,
-    [$$ReflectionSymbol]: '$Symbol',
+    [$$TypeReflectionSymbol]: '$Symbol',
     assert: (x: unknown): x is SymbolMonad => AssertType(x, '$Symbol'),
     check: (x: unknown): x is symbol => typeof x === 'symbol'
 };
 
-const export$Array = {
+const export$Array: MonasteryMonadConstructor<Array<unknown>, ArrayMonad<unknown>> = {
     of: $ArrayOf,
-    [$$ReflectionSymbol]: '$Array',
+    [$$TypeReflectionSymbol]: '$Array',
     assert: <T>(x: unknown): x is ArrayMonad<T> => AssertType(x, '$Array'),
     check: <U>(x: unknown): x is U[] => (x as U[]).constructor === Array
 };
 
-const export$Object = {
+const export$Object: MonasteryMonadConstructor<{}, ObjectMonad> = {
     of: $ObjectOf,
-    [$$ReflectionSymbol]: '$Object',
+    [$$TypeReflectionSymbol]: '$Object',
     assert: (x: unknown): x is ObjectMonad => AssertType(x, '$Object'),
     check: (x: unknown): x is {} => typeof x === 'object'
 };
 
-const export$Boolean = {
+const export$Boolean: MonasteryMonadConstructor<boolean, BooleanMonad> = {
     of: $BooleanOf,
-    [$$ReflectionSymbol]: '$Boolean',
+    [$$TypeReflectionSymbol]: '$Boolean',
     assert: (x: unknown): x is BooleanMonad => AssertType(x, '$Boolean'),
     check: (x: unknown): x is boolean => typeof x === 'boolean'
 };
 
-const export$Null = {
+const export$Null: MonasteryMonadConstructor<null, NullMonad> = {
     of: $NullOf,
-    [$$ReflectionSymbol]: '$Null',
+    [$$TypeReflectionSymbol]: '$Null',
     assert: (x: unknown): x is NullMonad => AssertType(x, '$Null'),
     check: (x: unknown): x is null => x === null
 };
 
-const export$Undefined = {
+const export$Undefined: MonasteryMonadConstructor<undefined, UndefinedMonad> = {
     of: $UndefinedOf,
-    [$$ReflectionSymbol]: '$Undefined',
+    [$$TypeReflectionSymbol]: '$Undefined',
     assert: (x: unknown): x is UndefinedMonad => AssertType(x, '$Undefined'),
     check: (x: unknown): x is undefined => x === undefined
 };
 
-const export$NaN = {
+const export$NaN: MonasteryMonadConstructor<number, NaNMonad> = {
     of: $NaNOf,
-    [$$ReflectionSymbol]: '$NaN',
+    [$$TypeReflectionSymbol]: '$NaN',
     assert: (x: unknown): x is NaNMonad => AssertType(x, '$NaN'),
     check: (x: unknown): x is NaNType => isNaN(x as number)
 };
@@ -456,5 +480,5 @@ export {
     $Maybe,
     $Just,
     $Nothing,
-    $$ReflectionSymbol
+    $$TypeReflectionSymbol
 };

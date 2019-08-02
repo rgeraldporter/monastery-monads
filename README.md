@@ -42,9 +42,9 @@ const fahrenheitToRankine = $n => $n.add(459.67);
 
 const temperature = $Number.of(thermometerReadingF);
 
-const celsius = fahrenheitToCelsius(temperature).emit();
-const kelvin = fahrenheitToKelvin(temperature).emit();
-const rankine = fahrenheitToRankine(temperature).emit();
+const celsius = fahrenheitToCelsius(temperature).unwrap();
+const kelvin = fahrenheitToKelvin(temperature).unwrap();
+const rankine = fahrenheitToRankine(temperature).unwrap();
 
 // Note: .toFixed(1) converts to string
 // > "-11.1"
@@ -67,8 +67,8 @@ const formatForConsole = $str => $str.prepend(`[${tag}] `);
 const formatForDb = $str => $str.trim();
 
 const logEntry = $String.of(logString);
-const logConsole = formatForConsole(logEntry).emit();
-const logDb = formatForDb(logEntry).emit();
+const logConsole = formatForConsole(logEntry).unwrap();
+const logDb = formatForDb(logEntry).unwrap();
 
 // > "[log] Value was over the threshold "
 console.log(logConsole);
@@ -93,16 +93,16 @@ const statusText = $str =>
         .defaultTo('None');
 
 // > "None"
-console.log(statusText(status1).emit());
+console.log(statusText(status1).unwrap());
 
 // > "Away"
-console.log(statusText(status2).emit());
+console.log(statusText(status2).unwrap());
 
 // Extend further with $String
 const logStatusText = statusText(status2).prepend(`[user-status] `);
 
 // > "[user-status] Away"
-console.log(logStatusText.emit());
+console.log(logStatusText.unwrap());
 ```
 
 ## Development

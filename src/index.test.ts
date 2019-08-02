@@ -22,7 +22,7 @@ import {
     Monad,
     MonasteryTypeParameters,
     MonasteryMonadTypeParameters,
-    $$ReflectionSymbol,
+    $$TypeReflectionSymbol,
     MonasteryTypeValue,
     MonasteryTypeConstructorTuple,
     TypeMonad,
@@ -383,7 +383,6 @@ describe('$Maybe', () => {
     it('should be able to default to a value', () => {
         const answer = $Maybe
             .of(undefined)
-            // @ts-ignore
             .as($Number)
             .defaultTo(1);
         expect(answer.join()).toBe(1);
@@ -392,7 +391,6 @@ describe('$Maybe', () => {
     it('should be able to default to the correct type value', () => {
         const answer = $Maybe
             .of('string')
-            // @ts-ignore
             .as($Number)
             .defaultTo(1);
         expect(answer.join()).toBe(1);
@@ -401,7 +399,6 @@ describe('$Maybe', () => {
     it('should be able to skip the default value when the provided value validates', () => {
         const answer = $Maybe
             .of('string')
-            // @ts-ignore
             .as($String)
             .defaultTo('x');
         expect(answer.join()).toBe('string');
@@ -410,7 +407,6 @@ describe('$Maybe', () => {
     it('should be able to work with objects', () => {
         const answer = $Maybe
             .of(null)
-            // @ts-ignore
             .as($Object)
             .defaultTo({ a: 1 });
         expect(answer.join()).toEqual({ a: 1 });
@@ -419,7 +415,6 @@ describe('$Maybe', () => {
     it('should be able to work with arrays', () => {
         const answer = $Maybe
             .of({ a: 1 })
-            // @ts-ignore
             .as($Array)
             .defaultTo([{ a: 1 }]);
         expect(answer.join()).toEqual([{ a: 1 }]);
@@ -428,7 +423,6 @@ describe('$Maybe', () => {
     it('should be able to work with arrays', () => {
         const answer = $Maybe
             .of({ a: 1 })
-            // @ts-ignore
             .as($Symbol)
             .defaultTo(Symbol('test'));
         expect(answer.inspect()).toBe('$Symbol(Symbol(test))');
@@ -437,7 +431,6 @@ describe('$Maybe', () => {
     it('should be able to work with boolean', () => {
         const answer = $Maybe
             .of(null)
-            // @ts-ignore
             .as($Boolean)
             .defaultTo(true);
         expect(answer.join()).toBe(true);
@@ -446,7 +439,6 @@ describe('$Maybe', () => {
     it('should not be able to set values into $Null', () => {
         const answer = $Maybe
             .of({ a: 1 })
-            // @ts-ignore
             .as($Null)
             .defaultTo({ a: 1 });
         expect(answer.inspect()).toEqual('$Null()');
@@ -455,7 +447,6 @@ describe('$Maybe', () => {
     it('should be able to work with objects by allowing further chaining', () => {
         const answer = $Maybe
             .of(null)
-            // @ts-ignore
             .as($Object)
             .defaultTo({ a: 1 })
             .path(['a'])
@@ -466,7 +457,6 @@ describe('$Maybe', () => {
     it('should be able to work with strings and continue to chain', () => {
         const answer = $Maybe
             .of('my string')
-            // @ts-ignore
             .as($String)
             .defaultTo('a string')
             .prepend('This is ')
@@ -478,7 +468,6 @@ describe('$Maybe', () => {
     it('should be able to set default number then chain', () => {
         const answer = $Maybe
             .of(undefined)
-            // @ts-ignore
             .as($Number)
             .defaultTo(2)
             .increment()
@@ -490,7 +479,6 @@ describe('$Maybe', () => {
     it('should be able to set real number then chain', () => {
         const answer = $Maybe
             .of(20)
-            // @ts-ignore
             .as($Number)
             .defaultTo(2)
             .increment()
@@ -520,6 +508,7 @@ describe('$Type generated types', () => {
 
         const $FirstLaw: FirstLawConstructor = $Type.of([
             '$FirstLaw',
+            // @ts-ignore
             { num: $Number, str: $String },
             x => ({
                 addNum: (a: number) =>
@@ -577,6 +566,7 @@ describe('$Type generated types', () => {
     it('should satisfy the second monad law of right identity', () => {
         const $SecondLaw = $Type.of([
             '$SecondLaw',
+            // @ts-ignore
             { num: $Number, str: $String, bool: $Boolean },
             x => ({
                 addNum: (a: number) =>
@@ -603,6 +593,7 @@ describe('$Type generated types', () => {
     it('should satisfy the third monad law of associativity', () => {
         const $ThirdLaw = $Type.of([
             '$ThirdLaw',
+            // @ts-ignore
             { num: $Number, str: $String, bool: $Boolean, obj: $Object },
             x => ({
                 addToNum: (a: number) =>
@@ -652,6 +643,7 @@ describe('$Type generated types', () => {
 
         const $MyType: MyTypeConstructor = $Type.of([
             '$MyType',
+            // @ts-ignore
             { num: $Number, str: $String, bool: $Boolean, obj: $Object },
             (x): MyTypeMethods => ({
                 addToNum: (a: number) =>
@@ -691,6 +683,7 @@ describe('$Type generated types', () => {
 
         const $MyType: MyTypeConstructor = $Type.of([
             '$MyType',
+            // @ts-ignore
             { num: $Number, str: $String, bool: $Boolean, obj: $Object },
             (x): MyTypeMethods => ({
                 addToNum: (a: number) =>
@@ -734,6 +727,7 @@ describe('$Type generated types', () => {
 
         const $MyType: MyTypeConstructor = $Type.of([
             '$MyType',
+            // @ts-ignore
             { num: $Number, str: $String, bool: $Boolean, obj: $Object },
             (x): MyTypeMethods => ({
                 addToNum: (a: number) =>
@@ -771,9 +765,9 @@ describe('README examples', () => {
 
         const temperature = $Number.of(thermometerReadingF);
 
-        const celsius = fahrenheitToCelsius(temperature).emit();
-        const kelvin = fahrenheitToKelvin(temperature).emit();
-        const rankine = fahrenheitToRankine(temperature).emit();
+        const celsius = fahrenheitToCelsius(temperature).unwrap();
+        const kelvin = fahrenheitToKelvin(temperature).unwrap();
+        const rankine = fahrenheitToRankine(temperature).unwrap();
 
         expect(celsius.toFixed(1)).toBe('-11.1');
         expect(kelvin.toFixed(1)).toBe('262.0');
@@ -789,8 +783,8 @@ describe('README examples', () => {
         const formatForDb = ($str: StringMonad) => $str.trim();
 
         const logEntry = $String.of(logString);
-        const logConsole = formatForConsole(logEntry).emit();
-        const logDb = formatForDb(logEntry).emit();
+        const logConsole = formatForConsole(logEntry).unwrap();
+        const logDb = formatForDb(logEntry).unwrap();
 
         expect(logConsole).toBe('[log] Value was over the threshold ');
         expect(logDb).toBe('Value was over the threshold');
@@ -809,8 +803,8 @@ describe('README examples', () => {
         // Extend further with $String
         const logStatusText = statusText(status2).prepend(`[user-status] `);
 
-        expect(statusText(status1).emit()).toBe('None');
-        expect(statusText(status2).emit()).toBe('Away');
-        expect(logStatusText.emit()).toBe('[user-status] Away');
+        expect(statusText(status1).unwrap()).toBe('None');
+        expect(statusText(status2).unwrap()).toBe('Away');
+        expect(logStatusText.unwrap()).toBe('[user-status] Away');
     });
 });
