@@ -269,6 +269,29 @@ describe('$Object', () => {
         const bx = $Object.of(a).path(['b', 'x', 'z']);
         expect(bx.inspect()).toEqual('Nothing');
     });
+
+    it('should not be able to mutate by reference', () => {
+        const a = {
+            b: {
+                x: {
+                    y: true,
+                    z: null
+                }
+            },
+            c: [1, 2, 12],
+            d: false
+        };
+
+        const obj = $Object.of(a);
+        // @ts-ignore
+        a.b = 2;
+        expect(obj.path(['b']).unwrap()).toEqual({
+            x: {
+                y: true,
+                z: null
+            }
+        });
+    });
 });
 
 describe('$String', () => {
@@ -808,3 +831,9 @@ describe('README examples', () => {
         expect(logStatusText.unwrap()).toBe('[user-status] Away');
     });
 });
+
+/* const genericType = $Type.of([
+    '$GenericType',
+    {$$AnyStringSymbol: $String, $$AnyNumberSymbol: $Number, },
+    {}
+]); */

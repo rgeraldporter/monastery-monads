@@ -30,6 +30,9 @@ import {
     NothingMonad
 } from './types';
 
+// @ts-ignore
+const clone = require('./clone.js');
+
 const _monasteryTypeSymbol = (t: string): symbol =>
     Symbol(`MonasteryMonad::${t}`);
 
@@ -372,9 +375,9 @@ const $NumberOf = (x: number): NumberMonad => $Number(Number(x));
 const $SymbolOf = (x: symbol): SymbolMonad =>
     typeof x === 'symbol' ? $Symbol(x) : $Symbol();
 const $ArrayOf = <T>(x: T[]): ArrayMonad<T> =>
-    Array.isArray(x) ? $Array(x as T[]) : $Array([x as T]);
+    Array.isArray(x) ? $Array(clone(x) as T[]) : $Array([clone(x) as T]);
 const $ObjectOf = (x: {}): ObjectMonad =>
-    x === Object(x) ? $Object(x) : $Object(Object(x));
+    x === Object(x) ? $Object(clone(x)) : $Object(Object(clone(x)));
 const $BooleanOf = (x: boolean): BooleanMonad => $Boolean(Boolean(x));
 const $NullOf = (): NullMonad => $Null();
 const $UndefinedOf = (): UndefinedMonad => $Undefined();

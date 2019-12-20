@@ -1,6 +1,6 @@
 {
     "name": "monastery-monads",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "description": "Primative Monads and more for JS.",
     "main": "build/src/index.js",
     "types": "build/src/index.d.ts",
@@ -20,14 +20,15 @@
         "compile": "tsc -p .",
         "fix": "gts fix",
         "prepare": "npm run compile",
-        "pretest": "npm run compile"
+        "pretest": "npm run compile && npm run copy-files",
+        "copy-files": "copyfiles -u 1 src/**/*.js build/src"
     },
     "devDependencies": {
         "@types/jest": "24.0.0",
         "@types/node": "11.9.4",
+        "copyfiles": "2.1.1",
         "gts": "^0.9.0",
         "jest": "23.6.0",
         "typescript": "3.5.3"
-    },
-    "dependencies": {}
+    }
 }
