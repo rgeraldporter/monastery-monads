@@ -1,6 +1,6 @@
 {
     "name": "monastery-monads",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "description": "Primative Monads and more for JS.",
     "main": "build/src/index.js",
     "types": "build/src/index.d.ts",
